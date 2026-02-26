@@ -3,6 +3,24 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+fun String.escapeForBuildConfig(): String = replace("\\", "\\\\").replace("\"", "\\\"")
+
+val webShellUrl =
+    (findProperty("WEB_SHELL_URL") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+        ?: "https://example.com/"
+val webShellUserAgentSuffix =
+    (findProperty("WEB_SHELL_USER_AGENT_SUFFIX") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+        ?: "Solana Mobile Web Shell"
+val webShellDebugUrlPresets =
+    (findProperty("WEB_SHELL_DEBUG_URL_PRESETS") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+        ?: "https://example.com/,http://localhost:5173/"
+
 android {
     namespace = "com.cdhiraj40.mwawebshell"
     compileSdk {
@@ -18,7 +36,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "WEB_SHELL_URL", "\"https://www.trepa.app/\"")
+        buildConfigField("String", "WEB_SHELL_URL", "\"${webShellUrl.escapeForBuildConfig()}\"")
+        buildConfigField(
+            "String",
+            "WEB_SHELL_USER_AGENT_SUFFIX",
+            "\"${webShellUserAgentSuffix.escapeForBuildConfig()}\"",
+        )
+        buildConfigField(
+            "String",
+            "WEB_SHELL_DEBUG_URL_PRESETS",
+            "\"${webShellDebugUrlPresets.escapeForBuildConfig()}\"",
+        )
     }
 
     buildTypes {

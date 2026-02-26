@@ -33,6 +33,40 @@ This Android WebView shell is the immediate path to preserve wallet connect/sign
 - Debug tooling for URL switching and MWA injection toggling.
 - External link routing for non-scoped hosts.
 
+## Template Configuration
+
+Update these values when creating a new app from this template:
+
+1. `gradle.properties`
+   - `WEB_SHELL_URL`: default site loaded by WebView.
+   - `WEB_SHELL_USER_AGENT_SUFFIX`: marker appended to user agent.
+   - `WEB_SHELL_DEBUG_URL_PRESETS`: debug dropdown URLs.
+2. `app/src/main/res/values/strings.xml`
+   - `app_name`: launcher app name.
+3. Android package/application id (recommended before release):
+   - `app/build.gradle.kts` (`namespace`, `applicationId`)
+   - Kotlin package declarations under `app/src/main/java/...`
+
+## Build and Run
+
+```bash
+./gradlew installDebug
+adb shell am start -n com.cdhiraj40.mwawebshell/.MainActivity
+```
+
+## V1 Acceptance Snapshot
+
+- Template validated against current test set:
+  - `https://trepa.app/`
+  - `https://app.drift.trade/`
+  - `https://www.jito.network/staking/`
+  - `https://jup.ag/`
+  - `https://www.cfl.fun/`
+- Current status:
+  - Page loading works across the 5-site matrix.
+  - Privy connect flow works.
+  - MWA connect/sign flows work.
+
 ## Deliverables Status
 
 - [x] Boilerplate Android WebView wrapper project with required V1 features.

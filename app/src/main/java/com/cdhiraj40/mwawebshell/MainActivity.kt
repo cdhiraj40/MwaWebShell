@@ -108,7 +108,11 @@ fun MwaWebShellScreen() {
                         .replace("; wv", "")
                         .replace("Version/4.0 ", "")
                         .replace("WebView", "")
-                settings.userAgentString = cleanUa
+                settings.userAgentString =
+                    appendUserAgentMarker(
+                        baseUserAgent = cleanUa,
+                        userAgentMarker = BuildConfig.WEB_SHELL_USER_AGENT_SUFFIX,
+                    )
 
                 if (BuildConfig.DEBUG) {
                     Log.i(TAG, "UA original: $originalUa")
@@ -180,13 +184,7 @@ fun MwaWebShellScreen() {
             linkedSetOf(
                 debugState.currentUrl,
                 BuildConfig.WEB_SHELL_URL,
-                "https://jup.ag/",
-                "https://www.cfl.fun/",
-                "https://app.drift.trade/",
-                "https://www.jito.network/staking/",
-                "https://trepa.app/",
-                "https://stake.solanamobile.com/",
-                "http://localhost:5173/",
+                *parseDebugUrlPresets(BuildConfig.WEB_SHELL_DEBUG_URL_PRESETS).toTypedArray(),
             ).toList()
         }
 
@@ -408,6 +406,41 @@ private fun decodeJavascriptStringResult(rawResult: String?): String {
     if (rawResult.isNullOrBlank() || rawResult == "null") return ""
     return runCatching { JSONObject("{\"value\":$rawResult}").getString("value") }
         .getOrDefault(rawResult)
+}
+
+private fun appendUserAgentMarker(
+    baseUserAgent: String,
+    userAgentMarker: String,
+): String {
+    val marker = userAgentMarker.trim()
+    if (marker.isEmpty()) return baseUserAgent.trim()
+    return if (baseUserAgent.contains(marker)) {
+        baseUserAgent.trim()
+    } else {
+        "${baseUserAgent.trim()} $marker".trim()
+    }
+}
+
+private fun parseDebugUrlPresets(rawValue: String): List<String> =
+    rawValue
+        .split(',', '\n')
+        .mapNotNull(::normalizeHttpUrl)
+        .distinct()
+
+private fun normalizeHttpUrl(rawValue: String): String? {
+    val trimmed = rawValue.trim()
+    if (trimmed.isEmpty()) return null
+    val withScheme =
+        if ("://" in trimmed) {
+            trimmed
+        } else {
+            "https://$trimmed"
+        }
+    val uri = withScheme.toUri()
+    val scheme = uri.scheme?.lowercase()
+    if (scheme != "http" && scheme != "https") return null
+    if (uri.host.isNullOrBlank()) return null
+    return uri.toString()
 }
 
 private const val TAG = "MwaWebShell"

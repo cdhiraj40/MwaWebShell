@@ -1,4 +1,4 @@
-package com.cdhiraj40.mwawebshell
+package com.solanamobile.webshell
 
 import android.content.Context
 import android.content.SharedPreferences

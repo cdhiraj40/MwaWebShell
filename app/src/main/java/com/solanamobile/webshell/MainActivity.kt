@@ -1,4 +1,4 @@
-package com.cdhiraj40.mwawebshell
+package com.solanamobile.webshell
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -48,7 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
-import com.cdhiraj40.mwawebshell.ui.theme.MwaWebShellTheme
+import com.solanamobile.webshell.ui.theme.MwaWebShellTheme
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {

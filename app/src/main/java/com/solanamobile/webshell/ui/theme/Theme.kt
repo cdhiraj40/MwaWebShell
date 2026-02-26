@@ -1,4 +1,4 @@
-package com.cdhiraj40.mwawebshell.ui.theme
+package com.solanamobile.webshell.ui.theme
 
 import android.app.Activity
 import android.os.Build

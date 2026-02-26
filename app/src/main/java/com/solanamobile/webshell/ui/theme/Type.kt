@@ -1,4 +1,4 @@
-package com.cdhiraj40.mwawebshell.ui.theme
+package com.solanamobile.webshell.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

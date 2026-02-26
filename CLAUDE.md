@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MwaWebShell is an Android application built with Kotlin and Jetpack Compose (Material 3). It uses a single-activity architecture with Compose-based UI.
 
-- **Package:** `com.cdhiraj40.mwawebshell`
+- **Package:** `com.solanamobile.webshell`
 - **Min SDK:** 28 | **Target/Compile SDK:** 36
 - **Kotlin:** 2.0.21 | **AGP:** 9.0.0 | **Gradle:** 9.1.0
 - **Java compatibility:** Java 11
@@ -23,7 +23,7 @@ MwaWebShell is an Android application built with Kotlin and Jetpack Compose (Mat
 
 Run a single unit test class:
 ```bash
-./gradlew test --tests "com.cdhiraj40.mwawebshell.ExampleUnitTest"
+./gradlew test --tests "com.solanamobile.webshell.ExampleUnitTest"
 ```
 
 ## Architecture

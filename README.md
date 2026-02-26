@@ -19,7 +19,7 @@ This Android WebView shell is the immediate path to preserve wallet connect/sign
 
 1. Host a web app at a configurable URL.
 2. Support in-app navigation (back handling, normal WebView scroll/gesture behavior).
-3. Inject `"Solana Mobile Web Shell"` marker into the WebView user agent.
+3. Inject `Solana Mobile Web Shell` marker into the WebView user agent.
 4. Catch and handle MWA intents (`solana-wallet://...`) and support connect/sign.
 5. Open external browser for out-of-scope links (outside configured host).
 
@@ -39,19 +39,20 @@ Update these values when creating a new app from this template:
 
 1. `gradle.properties`
    - `WEB_SHELL_URL`: default site loaded by WebView.
+   - `WEB_SHELL_APPLICATION_ID`: APK package id for install/release.
    - `WEB_SHELL_USER_AGENT_SUFFIX`: marker appended to user agent.
    - `WEB_SHELL_DEBUG_URL_PRESETS`: debug dropdown URLs.
 2. `app/src/main/res/values/strings.xml`
    - `app_name`: launcher app name.
-3. Android package/application id (recommended before release):
-   - `app/build.gradle.kts` (`namespace`, `applicationId`)
-   - Kotlin package declarations under `app/src/main/java/...`
+3. Kotlin package/namespace (optional for V1, required for a full custom package)
+   - Current neutral template package: `com.solanamobile.webshell`
+   - See release checklist for full rename steps.
 
 ## Build and Run
 
 ```bash
 ./gradlew installDebug
-adb shell am start -n com.cdhiraj40.mwawebshell/.MainActivity
+adb shell am start -n com.solanamobile.webshell/.MainActivity
 ```
 
 ## V1 Acceptance Snapshot
@@ -70,7 +71,7 @@ adb shell am start -n com.cdhiraj40.mwawebshell/.MainActivity
 ## Deliverables Status
 
 - [x] Boilerplate Android WebView wrapper project with required V1 features.
-- [ ] CLI tool (`init`, `build`, dependency setup) — deferred to V2.
+- [ ] CLI tool (`init`, `build`, dependency setup) - deferred to V2.
 
 ## Deferred to V2
 

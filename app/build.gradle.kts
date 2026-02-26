@@ -10,6 +10,11 @@ val webShellUrl =
         ?.trim()
         ?.ifBlank { null }
         ?: "https://example.com/"
+val webShellApplicationId =
+    (findProperty("WEB_SHELL_APPLICATION_ID") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+        ?: "com.solanamobile.webshell"
 val webShellUserAgentSuffix =
     (findProperty("WEB_SHELL_USER_AGENT_SUFFIX") as String?)
         ?.trim()
@@ -22,13 +27,13 @@ val webShellDebugUrlPresets =
         ?: "https://example.com/,http://localhost:5173/"
 
 android {
-    namespace = "com.cdhiraj40.mwawebshell"
+    namespace = "com.solanamobile.webshell"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.cdhiraj40.mwawebshell"
+        applicationId = webShellApplicationId
         minSdk = 28
         targetSdk = 36
         versionCode = 1

@@ -14,25 +14,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -44,7 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
@@ -68,18 +61,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MwaWebShellScreen() {
     val context = LocalContext.current
-    val debugState =
-        rememberWebShellDebugState(
-            context = context,
-            defaultUrl = BuildConfig.WEB_SHELL_URL,
-            isDebugBuild = BuildConfig.DEBUG,
-        )
+    val startUrl = remember { normalizeHttpUrl(BuildConfig.WEB_SHELL_URL) ?: BuildConfig.WEB_SHELL_URL }
+    val scopeHost = remember(startUrl) { startUrl.toUri().host.orEmpty() }
 
     var progress by remember { mutableFloatStateOf(0f) }
     var isLoading by remember { mutableStateOf(true) }
     var hasError by remember { mutableStateOf(false) }
     var showSplash by remember { mutableStateOf(true) }
-    var isMwaInjectionEnabled by remember { mutableStateOf(false) }
 
     val webView =
         remember {
@@ -133,12 +121,7 @@ fun MwaWebShellScreen() {
                     )
 
                 webViewClient =
-                    object : MwaWebViewClient(context, scopeHostProvider = {
-                        debugState.currentUrl
-                            .toUri()
-                            .host
-                            .orEmpty()
-                    }) {
+                    object : MwaWebViewClient(context, scopeHostProvider = { scopeHost }) {
                         override fun onPageFinished(
                             view: WebView,
                             url: String?,
@@ -146,11 +129,6 @@ fun MwaWebShellScreen() {
                             super.onPageFinished(view, url)
                             hasError = false
                             probeViewportAndMaybePatch(view, BuildConfig.DEBUG)
-                            if (isMwaInjectionEnabled) {
-                                injectMwaRegistration(view, BuildConfig.DEBUG)
-                            } else if (BuildConfig.DEBUG) {
-                                Log.i(TAG, "[MWA] manual registerMwa injection disabled")
-                            }
                         }
 
                         override fun onReceivedError(
@@ -166,26 +144,8 @@ fun MwaWebShellScreen() {
                         }
                     }
 
-                loadUrl(debugState.currentUrl)
+                loadUrl(startUrl)
             }
-        }
-    val loadUrlInWebView: (String) -> Unit = { rawUrl ->
-        val nextUrl = debugState.loadUrl(rawUrl)
-        hasError = false
-        isLoading = true
-        if (webView.url == nextUrl) {
-            webView.reload()
-        } else {
-            webView.loadUrl(nextUrl)
-        }
-    }
-    val debugUrlOptions =
-        remember(debugState.currentUrl) {
-            linkedSetOf(
-                debugState.currentUrl,
-                BuildConfig.WEB_SHELL_URL,
-                *parseDebugUrlPresets(BuildConfig.WEB_SHELL_DEBUG_URL_PRESETS).toTypedArray(),
-            ).toList()
         }
 
     DisposableEffect(Unit) {
@@ -198,51 +158,23 @@ fun MwaWebShellScreen() {
         webView.goBack()
     }
 
-    Box(
+    WebViewLayer(
         modifier =
             Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .windowInsetsPadding(WindowInsets.systemBars),
-    ) {
-        if (debugState.isDebugUrlBarVisible) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                DebugUrlDropdownBar(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp, start = 8.dp, end = 8.dp),
-                    selectedUrl = debugState.currentUrl,
-                    options = debugUrlOptions,
-                    onSelect = { selected -> loadUrlInWebView(selected) },
-                    onReload = { loadUrlInWebView(debugState.currentUrl) },
-                    isMwaInjectionEnabled = isMwaInjectionEnabled,
-                    onToggleMwaInjection = {
-                        isMwaInjectionEnabled = !isMwaInjectionEnabled
-                    },
-                )
-                WebViewLayer(
-                    modifier = Modifier.weight(1f),
-                    webView = webView,
-                    isLoading = isLoading,
-                    progress = progress,
-                    hasError = hasError,
-                    showSplash = showSplash,
-                    onRetry = { loadUrlInWebView(debugState.currentUrl) },
-                )
-            }
-        } else {
-            WebViewLayer(
-                modifier = Modifier.fillMaxSize(),
-                webView = webView,
-                isLoading = isLoading,
-                progress = progress,
-                hasError = hasError,
-                showSplash = showSplash,
-                onRetry = { loadUrlInWebView(debugState.currentUrl) },
-            )
-        }
-    }
+        webView = webView,
+        isLoading = isLoading,
+        progress = progress,
+        hasError = hasError,
+        showSplash = showSplash,
+        onRetry = {
+            hasError = false
+            isLoading = true
+            webView.reload()
+        },
+    )
 }
 
 @Composable
@@ -316,67 +248,6 @@ private fun WebViewLayer(
     }
 }
 
-@Composable
-private fun DebugUrlDropdownBar(
-    modifier: Modifier = Modifier,
-    selectedUrl: String,
-    options: List<String>,
-    onSelect: (String) -> Unit,
-    onReload: () -> Unit,
-    isMwaInjectionEnabled: Boolean,
-    onToggleMwaInjection: () -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        tonalElevation = 2.dp,
-        shadowElevation = 2.dp,
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(modifier = Modifier.weight(1f)) {
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { expanded = true },
-                ) {
-                    Text(
-                        text = selectedUrl,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                ) {
-                    options.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option) },
-                            onClick = {
-                                expanded = false
-                                onSelect(option)
-                            },
-                        )
-                    }
-                }
-            }
-            Button(onClick = onReload) {
-                Text("Reload")
-            }
-            Button(onClick = onToggleMwaInjection) {
-                Text(if (isMwaInjectionEnabled) "MWA: ON" else "MWA: OFF")
-            }
-        }
-    }
-}
-
 private fun probeViewportAndMaybePatch(
     webView: WebView,
     isDebug: Boolean,
@@ -387,17 +258,6 @@ private fun probeViewportAndMaybePatch(
         val isBroken = parsed?.optBoolean("broken") == true
         if (isDebug || isBroken) {
             Log.i(TAG, "[VP] ${parsed?.toString() ?: decoded}")
-        }
-    }
-}
-
-private fun injectMwaRegistration(
-    webView: WebView,
-    isDebug: Boolean,
-) {
-    webView.evaluateJavascript(MWA_REGISTER_SCRIPT) { rawResult ->
-        if (isDebug) {
-            Log.i(TAG, "[MWA] injection=${decodeJavascriptStringResult(rawResult)}")
         }
     }
 }
@@ -420,12 +280,6 @@ private fun appendUserAgentMarker(
         "${baseUserAgent.trim()} $marker".trim()
     }
 }
-
-private fun parseDebugUrlPresets(rawValue: String): List<String> =
-    rawValue
-        .split(',', '\n')
-        .mapNotNull(::normalizeHttpUrl)
-        .distinct()
 
 private fun normalizeHttpUrl(rawValue: String): String? {
     val trimmed = rawValue.trim()
@@ -492,7 +346,7 @@ private val VIEWPORT_PROBE_AND_PATCH_SCRIPT =
             '[class~="h-screen"], [class~="h-dvh"], [class*="h-screen"], [class*="h-dvh"] { height: var(--mwa-dvh-px) !important; }',
             '[class~="min-h-screen"], [class~="min-h-dvh"], [class*="min-h-screen"], [class*="min-h-dvh"] { min-height: var(--mwa-dvh-px) !important; }',
             '[class~="max-h-screen"], [class~="max-h-dvh"], [class*="max-h-screen"], [class*="max-h-dvh"] { max-height: var(--mwa-dvh-px) !important; }'
-          ].join('\n');
+          ].join('\\n');
           document.documentElement.appendChild(style);
         }
 
@@ -518,29 +372,5 @@ private val VIEWPORT_PROBE_AND_PATCH_SCRIPT =
         before: before,
         after: after
       });
-    })();
-    """.trimIndent()
-
-private val MWA_REGISTER_SCRIPT =
-    """
-    (function() {
-      if (window.__mwa_injected__) return "already";
-      window.__mwa_injected__ = true;
-
-      var script = document.createElement('script');
-      script.type = 'module';
-      script.textContent = "\
-        import { registerMwa, createDefaultAuthorizationCache, createDefaultChainSelector, createDefaultWalletNotFoundHandler } from 'https://esm.sh/@solana-mobile/wallet-standard-mobile@0.4.4';\
-        registerMwa({\
-          authorizationCache: createDefaultAuthorizationCache(),\
-          chainSelector: createDefaultChainSelector(),\
-          chains: ['solana:mainnet'],\
-          onWalletNotFound: createDefaultWalletNotFoundHandler(),\
-          appIdentity: { uri: window.location.href },\
-        });\
-        console.log('[MWA] registerMwa() injected successfully');\
-      ";
-      document.head.appendChild(script);
-      return "injected";
     })();
     """.trimIndent()

@@ -20,11 +20,6 @@ val webShellUserAgentSuffix =
         ?.trim()
         ?.ifBlank { null }
         ?: "Solana Mobile Web Shell"
-val webShellDebugUrlPresets =
-    (findProperty("WEB_SHELL_DEBUG_URL_PRESETS") as String?)
-        ?.trim()
-        ?.ifBlank { null }
-        ?: "https://example.com/,http://localhost:5173/"
 
 android {
     namespace = "com.solanamobile.webshell"
@@ -46,11 +41,6 @@ android {
             "String",
             "WEB_SHELL_USER_AGENT_SUFFIX",
             "\"${webShellUserAgentSuffix.escapeForBuildConfig()}\"",
-        )
-        buildConfigField(
-            "String",
-            "WEB_SHELL_DEBUG_URL_PRESETS",
-            "\"${webShellDebugUrlPresets.escapeForBuildConfig()}\"",
         )
     }
 

@@ -30,7 +30,6 @@ This Android WebView shell is the immediate path to preserve wallet connect/sign
 - Synthetic blur dispatch to unblock MWA detection in WebView.
 - Stable JS runtime during wallet handoff (WebView JS not paused).
 - Browser-like viewport behavior fixes + guarded runtime fallback for `vh/dvh`.
-- Debug tooling for URL switching and MWA injection toggling.
 - External link routing for non-scoped hosts.
 
 ## Template Configuration
@@ -41,7 +40,6 @@ Update these values when creating a new app from this template:
    - `WEB_SHELL_URL`: default site loaded by WebView.
    - `WEB_SHELL_APPLICATION_ID`: APK package id for install/release.
    - `WEB_SHELL_USER_AGENT_SUFFIX`: marker appended to user agent.
-   - `WEB_SHELL_DEBUG_URL_PRESETS`: debug dropdown URLs.
 2. `app/src/main/res/values/strings.xml`
    - `app_name`: launcher app name.
 3. Kotlin package/namespace (optional for V1, required for a full custom package)

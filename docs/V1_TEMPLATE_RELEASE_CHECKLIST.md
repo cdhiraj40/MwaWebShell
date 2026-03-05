@@ -8,7 +8,6 @@ Use this checklist before calling the Android template "ready".
   - [ ] `WEB_SHELL_URL`
   - [ ] `WEB_SHELL_APPLICATION_ID`
   - [ ] `WEB_SHELL_USER_AGENT_SUFFIX`
-  - [ ] `WEB_SHELL_DEBUG_URL_PRESETS`
 - [ ] Update app display name in `app/src/main/res/values/strings.xml` (`app_name`).
 
 ## 2) Optional Full Package Rename (if required)
@@ -34,13 +33,7 @@ If the team needs a custom package beyond `com.solanamobile.webshell`:
 - [ ] MWA connect flow works.
 - [ ] MWA sign flow works.
 
-## 5) Debug Controls Verification
-
-- [ ] Debug URL dropdown loads each preset correctly.
-- [ ] `MWA: OFF` path works when manual injection is disabled.
-- [ ] `MWA: ON` path still works.
-
-## 6) Current 5-Site Matrix (baseline)
+## 5) Current 5-Site Matrix (baseline)
 
 - [ ] `https://trepa.app/`
 - [ ] `https://app.drift.trade/`
@@ -48,8 +41,7 @@ If the team needs a custom package beyond `com.solanamobile.webshell`:
 - [ ] `https://jup.ag/`
 - [ ] `https://www.cfl.fun/`
 
-## 7) Ship Readiness
+## 6) Ship Readiness
 
-- [ ] Remove/disable non-essential debug UI for release if needed.
 - [ ] Confirm release build compiles.
 - [ ] Record test results and known V2 deferrals.

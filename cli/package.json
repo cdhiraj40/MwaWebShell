@@ -1,0 +1,30 @@
+{
+  "name": "@solanamobile/webshell-cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CLI for generating and building Solana Mobile Web Shell Android projects",
+  "type": "module",
+  "bin": {
+    "mwa-webshell": "./bin/mwa-webshell.js"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json && tsc -p tsconfig.test.json",
+    "cli": "node ./bin/mwa-webshell.js",
+    "dev": "tsx src/index.ts",
+    "smoke:apps": "node --import tsx ./scripts/smoke-apps.ts",
+    "test:isolated-smoke": "node --import tsx --test ./test/isolated-smoke.test.ts",
+    "test": "node --import tsx --test ./test/*.test.ts"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.3"
+  }
+}

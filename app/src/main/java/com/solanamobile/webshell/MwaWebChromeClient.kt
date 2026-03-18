@@ -13,8 +13,10 @@ class MwaWebChromeClient(
     private val onProgressChanged: (Int) -> Unit,
     private val isDebug: Boolean,
 ) : WebChromeClient() {
-
-    override fun onProgressChanged(view: WebView, newProgress: Int) {
+    override fun onProgressChanged(
+        view: WebView,
+        newProgress: Int,
+    ) {
         onProgressChanged.invoke(newProgress)
     }
 
@@ -22,12 +24,13 @@ class MwaWebChromeClient(
         if (!isDebug && consoleMessage.messageLevel() != ConsoleMessage.MessageLevel.ERROR) {
             return true
         }
-        val level = when (consoleMessage.messageLevel()) {
-            ConsoleMessage.MessageLevel.ERROR -> Log.ERROR
-            ConsoleMessage.MessageLevel.WARNING -> Log.WARN
-            ConsoleMessage.MessageLevel.DEBUG -> Log.DEBUG
-            else -> Log.INFO
-        }
+        val level =
+            when (consoleMessage.messageLevel()) {
+                ConsoleMessage.MessageLevel.ERROR -> Log.ERROR
+                ConsoleMessage.MessageLevel.WARNING -> Log.WARN
+                ConsoleMessage.MessageLevel.DEBUG -> Log.DEBUG
+                else -> Log.INFO
+            }
         Log.println(
             level,
             TAG,
@@ -46,15 +49,16 @@ class MwaWebChromeClient(
         // flows like Privy, social logins, etc.).  Open the URL in the
         // system browser so the user can complete the flow there.
         val newWebView = WebView(view.context)
-        newWebView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(
-                view: WebView,
-                request: WebResourceRequest,
-            ): Boolean {
-                view.context.startActivity(Intent(Intent.ACTION_VIEW, request.url))
-                return true
+        newWebView.webViewClient =
+            object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView,
+                    request: WebResourceRequest,
+                ): Boolean {
+                    view.context.startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                    return true
+                }
             }
-        }
         val transport = resultMsg.obj as WebView.WebViewTransport
         transport.webView = newWebView
         resultMsg.sendToTarget()

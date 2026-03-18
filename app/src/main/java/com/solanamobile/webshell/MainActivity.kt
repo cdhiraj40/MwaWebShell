@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
@@ -37,15 +39,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.solanamobile.webshell.ui.theme.MwaWebShellTheme
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
@@ -61,11 +67,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MwaWebShellScreen() {
     val context = LocalContext.current
-    val startUrl = remember { normalizeHttpUrl(BuildConfig.WEB_SHELL_URL) ?: BuildConfig.WEB_SHELL_URL }
+    val startUrl = remember { normalizeHttpUrl() ?: BuildConfig.WEB_SHELL_URL }
     val scopeHost = remember(startUrl) { startUrl.toUri().host.orEmpty() }
+    val refreshIndicatorColor = MaterialTheme.colorScheme.primary.toArgb()
+    val refreshIndicatorBackgroundColor = MaterialTheme.colorScheme.surface.toArgb()
 
     var progress by remember { mutableFloatStateOf(0f) }
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
     var showSplash by remember { mutableStateOf(true) }
 
@@ -99,7 +108,6 @@ fun MwaWebShellScreen() {
                 settings.userAgentString =
                     appendUserAgentMarker(
                         baseUserAgent = cleanUa,
-                        userAgentMarker = BuildConfig.WEB_SHELL_USER_AGENT_SUFFIX,
                     )
 
                 if (BuildConfig.DEBUG) {
@@ -128,18 +136,19 @@ fun MwaWebShellScreen() {
                         ) {
                             super.onPageFinished(view, url)
                             hasError = false
+                            isRefreshing = false
                             probeViewportAndMaybePatch(view, BuildConfig.DEBUG)
                         }
 
                         override fun onReceivedError(
-                            view: WebView,
-                            errorCode: Int,
-                            description: String?,
-                            failingUrl: String?,
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: WebResourceError?,
                         ) {
-                            super.onReceivedError(view, errorCode, description, failingUrl)
-                            if (failingUrl == view.url) {
+                            super.onReceivedError(view, request, error)
+                            if (request?.isForMainFrame == true) {
                                 hasError = true
+                                isRefreshing = false
                             }
                         }
                     }
@@ -147,9 +156,32 @@ fun MwaWebShellScreen() {
                 loadUrl(startUrl)
             }
         }
+    val swipeRefreshLayout =
+        remember(webView, refreshIndicatorColor, refreshIndicatorBackgroundColor) {
+            SwipeRefreshLayout(context).apply {
+                layoutParams =
+                    ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                setColorSchemeColors(
+                    refreshIndicatorColor,
+                )
+                setProgressBackgroundColorSchemeColor(refreshIndicatorBackgroundColor)
+                setOnChildScrollUpCallback { _, _ -> webView.canScrollVertically(-1) }
+                setOnRefreshListener {
+                    hasError = false
+                    isLoading = true
+                    isRefreshing = true
+                    webView.reload()
+                }
+                addView(webView)
+            }
+        }
 
     DisposableEffect(Unit) {
         onDispose {
+            swipeRefreshLayout.removeView(webView)
             webView.destroy()
         }
     }
@@ -164,7 +196,8 @@ fun MwaWebShellScreen() {
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .windowInsetsPadding(WindowInsets.systemBars),
-        webView = webView,
+        swipeRefreshLayout = swipeRefreshLayout,
+        isRefreshing = isRefreshing,
         isLoading = isLoading,
         progress = progress,
         hasError = hasError,
@@ -172,6 +205,7 @@ fun MwaWebShellScreen() {
         onRetry = {
             hasError = false
             isLoading = true
+            isRefreshing = false
             webView.reload()
         },
     )
@@ -180,7 +214,8 @@ fun MwaWebShellScreen() {
 @Composable
 private fun WebViewLayer(
     modifier: Modifier,
-    webView: WebView,
+    swipeRefreshLayout: SwipeRefreshLayout,
+    isRefreshing: Boolean,
     isLoading: Boolean,
     progress: Float,
     hasError: Boolean,
@@ -190,13 +225,15 @@ private fun WebViewLayer(
     Box(modifier = modifier) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
-            factory = { webView },
+            factory = { swipeRefreshLayout },
             update = { view ->
                 view.layoutParams =
                     ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
+                view.isEnabled = !hasError
+                view.isRefreshing = isRefreshing
             },
         )
 
@@ -268,11 +305,8 @@ private fun decodeJavascriptStringResult(rawResult: String?): String {
         .getOrDefault(rawResult)
 }
 
-private fun appendUserAgentMarker(
-    baseUserAgent: String,
-    userAgentMarker: String,
-): String {
-    val marker = userAgentMarker.trim()
+private fun appendUserAgentMarker(baseUserAgent: String): String {
+    val marker = "Solana Mobile Web Shell"
     if (marker.isEmpty()) return baseUserAgent.trim()
     return if (baseUserAgent.contains(marker)) {
         baseUserAgent.trim()
@@ -281,8 +315,8 @@ private fun appendUserAgentMarker(
     }
 }
 
-private fun normalizeHttpUrl(rawValue: String): String? {
-    val trimmed = rawValue.trim()
+private fun normalizeHttpUrl(): String? {
+    val trimmed = BuildConfig.WEB_SHELL_URL.trim()
     if (trimmed.isEmpty()) return null
     val withScheme =
         if ("://" in trimmed) {

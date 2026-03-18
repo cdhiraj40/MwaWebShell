@@ -15,11 +15,34 @@ val webShellApplicationId =
         ?.trim()
         ?.ifBlank { null }
         ?: "com.solanamobile.webshell"
-val webShellUserAgentSuffix =
-    (findProperty("WEB_SHELL_USER_AGENT_SUFFIX") as String?)
+val webShellSigningStoreFile =
+    (findProperty("WEB_SHELL_SIGNING_STORE_FILE") as String?)
         ?.trim()
         ?.ifBlank { null }
-        ?: "Solana Mobile Web Shell"
+val webShellSigningStorePassword =
+    (findProperty("WEB_SHELL_SIGNING_STORE_PASSWORD") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+        ?: System
+            .getenv("WEB_SHELL_SIGNING_STORE_PASSWORD")
+            ?.trim()
+            ?.ifBlank { null }
+val webShellSigningKeyAlias =
+    (findProperty("WEB_SHELL_SIGNING_KEY_ALIAS") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+val webShellSigningKeyPassword =
+    (findProperty("WEB_SHELL_SIGNING_KEY_PASSWORD") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+        ?: System
+            .getenv("WEB_SHELL_SIGNING_KEY_PASSWORD")
+            ?.trim()
+            ?.ifBlank { null }
+val hasReleaseSigning =
+    webShellSigningStoreFile != null &&
+        webShellSigningStorePassword != null &&
+        webShellSigningKeyAlias != null
 
 android {
     namespace = "com.solanamobile.webshell"
@@ -37,19 +60,28 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "WEB_SHELL_URL", "\"${webShellUrl.escapeForBuildConfig()}\"")
-        buildConfigField(
-            "String",
-            "WEB_SHELL_USER_AGENT_SUFFIX",
-            "\"${webShellUserAgentSuffix.escapeForBuildConfig()}\"",
-        )
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("webShellRelease") {
+                storeFile = file(webShellSigningStoreFile!!)
+                storePassword = webShellSigningStorePassword
+                keyAlias = webShellSigningKeyAlias
+                keyPassword = webShellSigningKeyPassword ?: webShellSigningStorePassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("webShellRelease")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -65,6 +97,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -72,6 +105,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.swiperefreshlayout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

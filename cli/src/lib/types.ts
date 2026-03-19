@@ -18,6 +18,8 @@ export interface ManifestSeed {
   webManifestUrl?: string;
   appName?: string;
   applicationId?: string;
+  versionCode?: number;
+  versionName?: string;
   webUrl?: string;
   themeColor?: string;
   backgroundColor?: string;
@@ -31,6 +33,8 @@ export interface GeneratedProjectConfig {
   projectName: string;
   appName: string;
   applicationId: string;
+  versionCode: number;
+  versionName: string;
   packageName: string;
   webUrl: string;
   source: {

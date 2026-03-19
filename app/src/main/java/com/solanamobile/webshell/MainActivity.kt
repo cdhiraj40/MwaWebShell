@@ -100,19 +100,13 @@ fun MwaWebShellScreen() {
                 settings.offscreenPreRaster = true
 
                 val originalUa = settings.userAgentString
-                val cleanUa =
-                    originalUa
-                        .replace("; wv", "")
-                        .replace("Version/4.0 ", "")
-                        .replace("WebView", "")
                 settings.userAgentString =
                     appendUserAgentMarker(
-                        baseUserAgent = cleanUa,
+                        baseUserAgent = originalUa,
                     )
 
                 if (BuildConfig.DEBUG) {
                     Log.i(TAG, "UA original: $originalUa")
-                    Log.i(TAG, "UA clean:    $cleanUa")
                     Log.i(TAG, "UA verify:   ${settings.userAgentString}")
                 }
 

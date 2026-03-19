@@ -74,6 +74,15 @@ function parseBubblewrapManifest(
       asString(manifest.name),
     applicationId:
       asString(manifest.packageId) ?? asString(manifest.applicationId),
+    versionCode: asPositiveInteger(
+      manifest.versionCode ??
+        manifest.appVersionCode ??
+        manifest.androidVersionCode,
+    ),
+    versionName:
+      asString(manifest.versionName) ??
+      asString(manifest.appVersionName) ??
+      asString(manifest.androidVersionName),
     webManifestUrl: resolveAssetUrl(asString(manifest.webManifestUrl), loaded.baseUrl),
     webUrl: resolveBubblewrapUrl(manifest, loaded.baseUrl),
     signing: normalizeSigning(asObjectOrUndefined(manifest.signingKey)),
@@ -302,6 +311,23 @@ function asObjectOrUndefined(value: unknown): JsonObject | undefined {
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function asPositiveInteger(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const parsed = Number.parseInt(trimmed, 10);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return undefined;
 }
 
 function parsePurpose(value: string | undefined): string[] {

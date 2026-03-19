@@ -13,6 +13,7 @@ const DEFAULT_KEYSTORE_FILENAME = "android.keystore";
 const DEFAULT_KEY_ALIAS = "android";
 const ANSI_BOLD_RED = "\u001b[1;31m";
 const ANSI_RESET = "\u001b[0m";
+const MIN_KEYSTORE_PASSWORD_LENGTH = 6;
 
 export interface SigningRuntime extends JavaRuntime {
   createKeystore?: (options: CreateKeystoreOptions) => Promise<void>;
@@ -160,10 +161,10 @@ async function promptConfirmedPassword(
 ): Promise<string> {
   while (true) {
     const password = await prompter.password(label, {
-      validate: requireNonEmpty(label),
+      validate: validateSigningPassword(label),
     });
     const confirmedPassword = await prompter.password(confirmationLabel, {
-      validate: requireNonEmpty(confirmationLabel),
+      validate: validateSigningPassword(confirmationLabel),
     });
     if (password === confirmedPassword) {
       return password;
@@ -241,6 +242,21 @@ function requireNonEmpty(label: string): (value: string) => string | undefined {
   return (value) => {
     if (!value.trim()) {
       return `${label} is required.`;
+    }
+    return undefined;
+  };
+}
+
+function validateSigningPassword(
+  label: string,
+): (value: string) => string | undefined {
+  return (value) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return `${label} is required.`;
+    }
+    if (trimmed.length < MIN_KEYSTORE_PASSWORD_LENGTH) {
+      return `${label} must be at least ${MIN_KEYSTORE_PASSWORD_LENGTH} characters.`;
     }
     return undefined;
   };

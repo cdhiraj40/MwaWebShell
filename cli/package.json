@@ -14,13 +14,15 @@
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json && tsc -p tsconfig.test.json",
     "cli": "node ./bin/mwa-webshell.js",
+    "command:matrix": "node --import tsx ./scripts/command-matrix.ts",
     "dev": "tsx src/index.ts",
     "smoke:apps": "node --import tsx ./scripts/smoke-apps.ts",
     "test:isolated-smoke": "node --import tsx --test ./test/isolated-smoke.test.ts",
     "test": "node --import tsx --test ./test/*.test.ts"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.0.0"
+    "@inquirer/prompts": "^8.0.0",
+    "ora": "^8.2.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

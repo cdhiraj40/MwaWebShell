@@ -5,11 +5,11 @@ import { readProjectConfig } from "../lib/project-config.js";
 import { promptBuildSigningPasswords } from "../lib/signing.js";
 import { doctorEnvironment, DoctorResult, runDoctor } from "../lib/toolchain.js";
 import { SigningConfig } from "../lib/types.js";
+import { createStepFeedback, runStep } from "../lib/ui.js";
 
 export interface BuildCommandOptions {
   projectDir?: string;
   release?: boolean;
-  bundle?: boolean;
   stacktrace?: boolean;
   sdkDir?: string;
   keystorePath?: string;
@@ -38,19 +38,25 @@ export async function runBuildCommand(
 ): Promise<void> {
   const projectDirectory = path.resolve(process.cwd(), directory ?? options.projectDir ?? ".");
   const doctor = runtime.doctor ?? runDoctor;
-  const toolchain = await doctor({
-    projectDirectory,
-    sdkDir: options.sdkDir,
-    fix: true,
-  });
+  const feedback = createStepFeedback();
+  const toolchain = await runStep(
+    feedback,
+    "Checking Android toolchain...",
+    () =>
+      doctor(
+        {
+          projectDirectory,
+          sdkDir: options.sdkDir,
+          fix: true,
+        },
+        { logger: feedback.logger },
+      ),
+    "Android toolchain ready.",
+  );
 
   const projectConfig = await readProjectConfig(projectDirectory);
   const signing = resolveSigning(options, projectConfig?.signing);
-  const task = options.bundle
-    ? "bundleRelease"
-    : options.release
-      ? "assembleRelease"
-      : "assembleDebug";
+  const task = options.release ? "assembleRelease" : "assembleDebug";
 
   const gradleArgs = [task];
   if (options.stacktrace) {
@@ -61,7 +67,7 @@ export async function runBuildCommand(
   const prompter = new Prompter();
 
   try {
-    if ((options.release || options.bundle) && signing.keystorePath && signing.keyAlias) {
+    if (options.release && signing.keystorePath && signing.keyAlias) {
       const credentials = await (
         runtime.resolveSigningPasswords ??
         ((candidate) => promptBuildSigningPasswords(prompter, candidate))
@@ -72,32 +78,62 @@ export async function runBuildCommand(
         `-PWEB_SHELL_SIGNING_KEY_ALIAS=${signing.keyAlias}`,
       );
 
-      await (runtime.runGradle ?? runGradleCommand)(
-        toolchain.gradleWrapper,
-        gradleArgs,
-        projectDirectory,
-        {
-          ...gradleEnv,
-          WEB_SHELL_SIGNING_STORE_PASSWORD: credentials.storePassword,
-          WEB_SHELL_SIGNING_KEY_PASSWORD: credentials.keyPassword,
-        },
+      await runStep(
+        feedback,
+        describeGradleTask(task),
+        () =>
+          (runtime.runGradle ?? runGradleCommand)(
+            toolchain.gradleWrapper,
+            gradleArgs,
+            projectDirectory,
+            {
+              ...gradleEnv,
+              WEB_SHELL_SIGNING_STORE_PASSWORD: credentials.storePassword,
+              WEB_SHELL_SIGNING_KEY_PASSWORD: credentials.keyPassword,
+            },
+          ),
+        describeGradleTaskSuccess(task),
       );
     } else {
-      if ((options.release || options.bundle) && (!signing.keystorePath || !signing.keyAlias)) {
-        console.log("No signing metadata configured. Gradle will produce an unsigned release artifact.");
+      if (options.release && (!signing.keystorePath || !signing.keyAlias)) {
+        feedback.info("No signing metadata configured. Gradle will produce an unsigned release artifact.");
       }
 
-      await (runtime.runGradle ?? runGradleCommand)(
-        toolchain.gradleWrapper,
-        gradleArgs,
-        projectDirectory,
-        gradleEnv,
+      await runStep(
+        feedback,
+        describeGradleTask(task),
+        () =>
+          (runtime.runGradle ?? runGradleCommand)(
+            toolchain.gradleWrapper,
+            gradleArgs,
+            projectDirectory,
+            gradleEnv,
+          ),
+        describeGradleTaskSuccess(task),
       );
     }
 
     printBuildOutput(projectDirectory, options, toolchain);
   } finally {
     prompter.close();
+  }
+}
+
+function describeGradleTask(task: string): string {
+  switch (task) {
+    case "assembleRelease":
+      return "Building release APK...";
+    default:
+      return "Building debug APK...";
+  }
+}
+
+function describeGradleTaskSuccess(task: string): string {
+  switch (task) {
+    case "assembleRelease":
+      return "Built release APK.";
+    default:
+      return "Built debug APK.";
   }
 }
 
@@ -120,23 +156,37 @@ async function runGradleCommand(
   extraEnv?: NodeJS.ProcessEnv,
 ): Promise<void> {
   await new Promise<void>((resolve, reject) => {
+    let output = "";
     const child = spawn(command, args, {
       cwd,
       env: {
         ...process.env,
         ...extraEnv,
       },
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
       shell: process.platform === "win32",
     });
 
+    child.stdout.on("data", (chunk) => {
+      output += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      output += chunk.toString();
+    });
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) {
         resolve();
         return;
       }
-      reject(new Error(`Gradle exited with code ${code ?? "unknown"}.`));
+      const details = output.trim();
+      reject(
+        new Error(
+          details
+            ? `Gradle exited with code ${code ?? "unknown"}.\n${details}`
+            : `Gradle exited with code ${code ?? "unknown"}.`,
+        ),
+      );
     });
   });
 }
@@ -146,15 +196,9 @@ function printBuildOutput(
   options: BuildCommandOptions,
   _toolchain: DoctorResult,
 ): void {
-  if (options.bundle) {
-    console.log(
-      `Build finished. Check ${path.join(projectDirectory, "app", "build", "outputs", "bundle", "release")}`,
-    );
-    return;
-  }
-
   const variant = options.release ? "release" : "debug";
+  const apkName = options.release ? "app-release.apk" : "app-debug.apk";
   console.log(
-    `Build finished. Check ${path.join(projectDirectory, "app", "build", "outputs", "apk", variant)}`,
+    `Build finished. Check ${path.join(projectDirectory, "app", "build", "outputs", "apk", variant, apkName)}`,
   );
 }

@@ -22,13 +22,18 @@ import {
   resolveRepositoryRoot,
   validateApplicationId,
 } from "../lib/utils.js";
+import { createStepFeedback, runStep } from "../lib/ui.js";
 import { GeneratedProjectConfig, ManifestSeed, SigningConfig } from "../lib/types.js";
+
+const MAX_ANDROID_VERSION_CODE = 2_100_000_000;
 
 export interface InitCommandOptions {
   manifest?: string;
   applicationId?: string;
   appName?: string;
   url?: string;
+  versionCode?: number;
+  versionName?: string;
   projectName?: string;
   keystorePath?: string;
   keystoreAlias?: string;
@@ -47,21 +52,33 @@ export async function runInitCommand(
   const cwd = process.cwd();
   const targetDirectory = path.resolve(cwd, directory ?? ".");
   const repositoryRoot = resolveRepositoryRoot(import.meta.url);
+  const feedback = createStepFeedback();
 
   if (targetDirectory === repositoryRoot) {
     throw new Error("Refusing to generate into the template repository root.");
   }
 
   const inputManifestSeed = options.manifest
-    ? await loadManifest(options.manifest, cwd)
+    ? await runStep(
+        feedback,
+        "Loading manifest...",
+        () => loadManifest(options.manifest!, cwd),
+        "Loaded manifest.",
+      )
     : undefined;
   const bubblewrapSeed = inputManifestSeed?.kind === "bubblewrap"
     ? inputManifestSeed
     : undefined;
+  const linkedWebManifestUrl = bubblewrapSeed?.webManifestUrl;
   const webManifestSeed = inputManifestSeed?.kind === "web"
     ? inputManifestSeed
-    : bubblewrapSeed?.webManifestUrl
-      ? await loadWebManifest(bubblewrapSeed.webManifestUrl, cwd)
+    : linkedWebManifestUrl
+      ? await runStep(
+          feedback,
+          "Loading linked web manifest...",
+          () => loadWebManifest(linkedWebManifestUrl, cwd),
+          "Loaded linked web manifest.",
+        )
       : undefined;
 
   const prompter = new Prompter(options.nonInteractive ? false : undefined);
@@ -102,6 +119,16 @@ export async function runInitCommand(
       prompter,
       initialAppName,
     );
+    const versionCode = await resolveVersionCode(
+      prompter,
+      options.versionCode,
+      bubblewrapSeed,
+    );
+    const versionName = await resolveVersionName(
+      prompter,
+      options.versionName,
+      bubblewrapSeed,
+    );
     const webUrl = await resolveWebUrl(
       prompter,
       options.url,
@@ -118,10 +145,16 @@ export async function runInitCommand(
 
     const initialSigning = resolveSigning(options, bubblewrapSeed);
 
-    await copyTemplateProject(targetDirectory, overwrite, {
-      repositoryUrl: templateRepo,
-      ref: templateRef,
-    });
+    await runStep(
+      feedback,
+      "Cloning and copying Android template...",
+      () =>
+        copyTemplateProject(targetDirectory, overwrite, {
+          repositoryUrl: templateRepo,
+          ref: templateRef,
+        }),
+      "Prepared Android template.",
+    );
 
     const signing = await ensureInitSigning(
       prompter,
@@ -136,6 +169,8 @@ export async function runInitCommand(
       projectName,
       appName,
       applicationId,
+      versionCode,
+      versionName,
       packageName: packageNameSuggestion.packageName,
       webUrl,
       source: {
@@ -147,8 +182,15 @@ export async function runInitCommand(
       signing,
     };
 
-    await applyProjectConfiguration(targetDirectory, projectConfig, webManifestSeed);
-    await writeProjectConfig(targetDirectory, projectConfig);
+    await runStep(
+      feedback,
+      "Applying Android project configuration...",
+      async () => {
+        await applyProjectConfiguration(targetDirectory, projectConfig, webManifestSeed);
+        await writeProjectConfig(targetDirectory, projectConfig);
+      },
+      "Applied Android project configuration.",
+    );
 
     console.log(`Generated project at ${targetDirectory}`);
     console.log(`Application ID: ${applicationId}`);
@@ -208,6 +250,9 @@ async function resolveWebUrl(
   return prompter.text("Web app URL", {
     defaultValue: explicitValue ?? bubblewrapSeed?.webUrl ?? webManifestSeed?.webUrl,
     validate: (value) => {
+      if (!value.trim()) {
+        return "Web app URL is required.";
+      }
       try {
         normalizeHttpUrl(value);
         return undefined;
@@ -216,6 +261,29 @@ async function resolveWebUrl(
       }
     },
   }).then(normalizeHttpUrl);
+}
+
+async function resolveVersionCode(
+  prompter: Prompter,
+  explicitValue: number | undefined,
+  bubblewrapSeed?: ManifestSeed,
+): Promise<number> {
+  const rawValue = await prompter.text("Android version code", {
+    defaultValue: String(explicitValue ?? bubblewrapSeed?.versionCode ?? 1),
+    validate: validateVersionCode,
+  });
+  return Number.parseInt(rawValue, 10);
+}
+
+async function resolveVersionName(
+  prompter: Prompter,
+  explicitValue: string | undefined,
+  bubblewrapSeed?: ManifestSeed,
+): Promise<string> {
+  return prompter.text("Android version name", {
+    defaultValue: explicitValue ?? bubblewrapSeed?.versionName ?? "1.0",
+    validate: requireNonEmpty("Android version name"),
+  });
 }
 
 function resolveSigning(
@@ -281,6 +349,21 @@ function requireNonEmpty(label: string): (value: string) => string | undefined {
     }
     return undefined;
   };
+}
+
+function validateVersionCode(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "Android version code is required.";
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return "Android version code must be a positive integer.";
+  }
+  if (parsed > MAX_ANDROID_VERSION_CODE) {
+    return `Android version code must be ${MAX_ANDROID_VERSION_CODE} or lower.`;
+  }
+  return undefined;
 }
 
 function resolveProjectName(

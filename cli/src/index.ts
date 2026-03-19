@@ -33,10 +33,10 @@ async function main(): Promise<void> {
           "application-id": { type: "string" },
           "app-name": { type: "string" },
           url: { type: "string" },
+          "version-code": { type: "string" },
+          "version-name": { type: "string" },
           "keystore-path": { type: "string" },
           "keystore-alias": { type: "string" },
-          "keystore-store-password-env": { type: "string" },
-          "keystore-key-password-env": { type: "string" },
           force: { type: "boolean" },
           help: { type: "boolean", short: "h" },
         },
@@ -52,10 +52,12 @@ async function main(): Promise<void> {
         applicationId: values["application-id"],
         appName: values["app-name"],
         url: values.url,
+        versionCode: values["version-code"]
+          ? Number.parseInt(values["version-code"], 10)
+          : undefined,
+        versionName: values["version-name"],
         keystorePath: values["keystore-path"],
         keystoreAlias: values["keystore-alias"],
-        keystoreStorePasswordEnv: values["keystore-store-password-env"],
-        keystoreKeyPasswordEnv: values["keystore-key-password-env"],
         force: values.force,
       });
       return;
@@ -66,15 +68,10 @@ async function main(): Promise<void> {
         args: argv.slice(1),
         allowPositionals: true,
         options: {
-          "project-dir": { type: "string" },
           release: { type: "boolean" },
-          bundle: { type: "boolean" },
           stacktrace: { type: "boolean" },
-          "sdk-dir": { type: "string" },
           "keystore-path": { type: "string" },
           "keystore-alias": { type: "string" },
-          "store-password-env": { type: "string" },
-          "key-password-env": { type: "string" },
           help: { type: "boolean", short: "h" },
         },
       });
@@ -85,15 +82,10 @@ async function main(): Promise<void> {
       }
 
       await runBuildCommand(positionals[0], {
-        projectDir: values["project-dir"],
         release: values.release,
-        bundle: values.bundle,
         stacktrace: values.stacktrace,
-        sdkDir: values["sdk-dir"],
         keystorePath: values["keystore-path"],
         keystoreAlias: values["keystore-alias"],
-        storePasswordEnv: values["store-password-env"],
-        keyPasswordEnv: values["key-password-env"],
       });
       return;
     }
@@ -103,8 +95,6 @@ async function main(): Promise<void> {
         args: argv.slice(1),
         allowPositionals: true,
         options: {
-          "project-dir": { type: "string" },
-          "sdk-dir": { type: "string" },
           fix: { type: "boolean" },
           help: { type: "boolean", short: "h" },
         },
@@ -116,8 +106,6 @@ async function main(): Promise<void> {
       }
 
       await runDoctorCommand(positionals[0], {
-        projectDir: values["project-dir"],
-        sdkDir: values["sdk-dir"],
         fix: values.fix,
       });
       return;
@@ -160,10 +148,10 @@ Options:
   --application-id <id>                        Android application ID
   --app-name <name>                            Android launcher name
   --url <url>                                  Default web URL to load
+  --version-code <number>                      Android version code for updates/releases
+  --version-name <name>                        Android version name for updates/releases
   --keystore-path <path>                       Optional release keystore path
   --keystore-alias <alias>                     Optional release key alias
-  --keystore-store-password-env <env>          Env var for keystore password
-  --keystore-key-password-env <env>            Env var for key password
   --force                                      Overwrite template files if needed
   -h, --help                                   Show help`);
 }
@@ -173,15 +161,10 @@ function printBuildHelp(): void {
   mwa-webshell build [directory] [options]
 
 Options:
-  --project-dir <path>         Explicit project directory
   --release                    Build a release APK
-  --bundle                     Build a release app bundle
   --stacktrace                 Pass --stacktrace to Gradle
-  --sdk-dir <path>             Android SDK directory override
   --keystore-path <path>       Release keystore path override
   --keystore-alias <alias>     Release key alias override
-  --store-password-env <env>   Env var containing the keystore password
-  --key-password-env <env>     Env var containing the key password
   -h, --help                   Show help`);
 }
 
@@ -190,8 +173,6 @@ function printDoctorHelp(): void {
   mwa-webshell doctor [directory] [options]
 
 Options:
-  --project-dir <path>         Explicit project directory
-  --sdk-dir <path>             Android SDK directory override
   --fix                        Install missing tools and SDK packages automatically
   -h, --help                   Show help`);
 }

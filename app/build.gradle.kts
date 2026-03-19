@@ -15,6 +15,17 @@ val webShellApplicationId =
         ?.trim()
         ?.ifBlank { null }
         ?: "com.solanamobile.webshell"
+val webShellVersionCode =
+    (findProperty("WEB_SHELL_VERSION_CODE") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+        ?.toIntOrNull()
+        ?: 1
+val webShellVersionName =
+    (findProperty("WEB_SHELL_VERSION_NAME") as String?)
+        ?.trim()
+        ?.ifBlank { null }
+        ?: "1.0"
 val webShellSigningStoreFile =
     (findProperty("WEB_SHELL_SIGNING_STORE_FILE") as String?)
         ?.trim()
@@ -54,8 +65,8 @@ android {
         applicationId = webShellApplicationId
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = webShellVersionCode
+        versionName = webShellVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

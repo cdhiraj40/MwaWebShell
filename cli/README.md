@@ -37,11 +37,11 @@ npm run test
 ```bash
 pnpm cli -- init ./my-app --manifest https://example.com/manifest.json
 pnpm cli -- init ./my-app --manifest ./twa-manifest.json
+pnpm cli -- init ./my-app --version-code 12 --version-name 1.2.0
 pnpm cli -- build ./my-app
 pnpm cli -- build ./my-app --release
 pnpm cli -- doctor ./my-app --fix
-pnpm smoke:apps
-pnpm test:isolated-smoke
+pnpm command:matrix -- ./my-app
 ```
 
 ## Smoke Batch
@@ -68,8 +68,9 @@ pnpm test:isolated-smoke
 ## Signing flow
 
 - `init` prompts for a signing keystore path and key alias
+- `init` also captures Android version code and version name so migrations do not have to patch them manually after generation
 - if the keystore file does not exist yet, `init` creates it and persists only the keystore path and alias into `twa-manifest.json`
-- `build --release` and `build --bundle` use that saved signing metadata
+- `build --release` uses that saved signing metadata
 - passwords are never persisted
 - password resolution order is:
   - `WEB_SHELL_KEYSTORE_PASSWORD` / `WEB_SHELL_KEY_PASSWORD`

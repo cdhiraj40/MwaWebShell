@@ -160,7 +160,7 @@ export function normalizeHttpUrl(value: string): string {
 
 export function validateApplicationId(value: string): string | undefined {
   if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(value)) {
-    return "Application ID must look like com.example.app and use lowercase package segments.";
+    return "Application ID must look like com.example.app. Use lowercase package segments with letters, numbers, or underscores only; dashes (-) are not allowed.";
   }
 
   return undefined;

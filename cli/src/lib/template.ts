@@ -3,7 +3,7 @@ import { cp, mkdtemp, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ensureDirectory, ensureFileExecutable } from "./utils.js";
+import { ensureDirectory, ensureFileExecutable, exists } from "./utils.js";
 
 export const DEFAULT_TEMPLATE_REPOSITORY_URL =
   // TODO: switch this default back to the public HTTPS URL once the template
@@ -20,10 +20,8 @@ const TEMPLATE_ENTRIES = [
   ".gitignore",
   "app",
   "build.gradle.kts",
-  // TODO: before team rollout, review whether any markdown/docs should ship at all.
   // Keep this list explicit so internal files like AGENTS.md, CLAUDE.md, CLI docs,
   // scratch notes, and planning docs never leak into generated projects by default.
-  "docs/V1_TEMPLATE_RELEASE_CHECKLIST.md",
   "gradle",
   "gradle.properties",
   "gradlew",
@@ -115,6 +113,9 @@ async function copyTemplateEntries(
     const sourcePath = path.join(sourceDirectory, entry);
     const destinationPath = path.join(targetDirectory, entry);
     await ensureDirectory(path.dirname(destinationPath));
+    if (overwrite && (await exists(destinationPath))) {
+      await rm(destinationPath, { recursive: true, force: true });
+    }
     await cp(sourcePath, destinationPath, {
       recursive: true,
       force: overwrite,

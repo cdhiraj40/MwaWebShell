@@ -1,4 +1,5 @@
 import path from "node:path";
+import { rm } from "node:fs/promises";
 import { applyProjectBranding } from "./branding.js";
 import { GeneratedProjectConfig } from "./types.js";
 import {
@@ -154,6 +155,9 @@ async function relocatePackageDirectories(
       sourceSet,
       packageNameToPath(packageName),
     );
+    if (await exists(destinationDirectory)) {
+      await rm(destinationDirectory, { recursive: true, force: true });
+    }
     await moveDirectory(sourceDirectory, destinationDirectory);
     await removeEmptyParents(path.dirname(sourceDirectory), sourceSet);
   }

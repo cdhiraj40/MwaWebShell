@@ -1,8 +1,3 @@
-import {
-  confirm as promptConfirm,
-  input as promptInput,
-  password as promptPassword,
-} from "@inquirer/prompts";
 import { stdin as input, stdout as output } from "node:process";
 
 interface TextPromptOptions {
@@ -34,6 +29,7 @@ export class Prompter implements PromptSession {
     }
 
     while (true) {
+      const promptInput = await loadPromptInput();
       const rawValue = await promptInput({
         message,
         default: options.defaultValue,
@@ -56,6 +52,7 @@ export class Prompter implements PromptSession {
     if (!this.interactive) {
       return defaultValue;
     }
+    const promptConfirm = await loadPromptConfirm();
     return promptConfirm({
       message,
       default: defaultValue,
@@ -71,6 +68,7 @@ export class Prompter implements PromptSession {
     }
 
     while (true) {
+      const promptPassword = await loadPromptPassword();
       const value = await promptPassword({
         message,
         mask: true,
@@ -88,4 +86,24 @@ export class Prompter implements PromptSession {
   close(): void {
     // No-op. @inquirer/prompts manages its own lifecycle per prompt call.
   }
+}
+
+type PromptLoader = typeof import("@inquirer/prompts");
+let promptModulePromise: Promise<PromptLoader> | undefined;
+
+async function loadPromptModule(): Promise<PromptLoader> {
+  promptModulePromise ??= import("@inquirer/prompts");
+  return await promptModulePromise;
+}
+
+async function loadPromptInput(): Promise<PromptLoader["input"]> {
+  return (await loadPromptModule()).input;
+}
+
+async function loadPromptConfirm(): Promise<PromptLoader["confirm"]> {
+  return (await loadPromptModule()).confirm;
+}
+
+async function loadPromptPassword(): Promise<PromptLoader["password"]> {
+  return (await loadPromptModule()).password;
 }

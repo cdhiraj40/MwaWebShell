@@ -5,29 +5,57 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensureDirectory, ensureFileExecutable, exists } from "./utils.js";
 
-export const DEFAULT_TEMPLATE_REPOSITORY_URL =
-  // TODO: switch this default back to the public HTTPS URL once the template
-  // repository is public.
-  "git@github.com:cdhiraj40/MwaWebShell.git";
-export const DEFAULT_TEMPLATE_REF = "main";
+export const DEFAULT_TEMPLATE_REPOSITORY_URL = new URL("../../template/", import.meta.url).toString();
+export const DEFAULT_TEMPLATE_REF = "bundled";
 
 export interface TemplateSource {
   repositoryUrl: string;
   ref: string;
 }
 
-const TEMPLATE_ENTRIES = [
-  ".gitignore",
-  "app",
-  "build.gradle.kts",
-  // Keep this list explicit so internal files like AGENTS.md, CLAUDE.md, CLI docs,
-  // scratch notes, and planning docs never leak into generated projects by default.
-  "gradle",
-  "gradle.properties",
-  "gradlew",
-  "gradlew.bat",
-  "settings.gradle.kts",
-] as const;
+interface TemplateEntry {
+  destination: string;
+  source: string;
+  bundledSource?: string;
+}
+
+const TEMPLATE_ENTRIES: TemplateEntry[] = [
+  {
+    destination: ".gitignore",
+    source: ".gitignore",
+    bundledSource: "gitignore",
+  },
+  {
+    destination: "app",
+    source: "app",
+  },
+  {
+    destination: "build.gradle.kts",
+    source: "build.gradle.kts",
+  },
+  // Keep this list explicit so internal docs, scratch notes, and planning files
+  // never leak into generated projects by default.
+  {
+    destination: "gradle",
+    source: "gradle",
+  },
+  {
+    destination: "gradle.properties",
+    source: "gradle.properties",
+  },
+  {
+    destination: "gradlew",
+    source: "gradlew",
+  },
+  {
+    destination: "gradlew.bat",
+    source: "gradlew.bat",
+  },
+  {
+    destination: "settings.gradle.kts",
+    source: "settings.gradle.kts",
+  },
+];
 
 export async function copyTemplateProject(
   targetDirectory: string,
@@ -55,8 +83,6 @@ async function cloneTemplateRepository(
   targetDirectory: string,
   templateSource: TemplateSource,
 ): Promise<void> {
-  // TODO: move this default to a dedicated template repo once the CLI and template
-  // are versioned independently.
   const args = [
     "clone",
     "--depth",
@@ -108,10 +134,13 @@ async function copyTemplateEntries(
   overwrite: boolean,
 ): Promise<void> {
   await ensureDirectory(targetDirectory);
+  const isBundledTemplate =
+    sourceDirectory === fileURLToPath(new URL("../../template/", import.meta.url));
 
   for (const entry of TEMPLATE_ENTRIES) {
-    const sourcePath = path.join(sourceDirectory, entry);
-    const destinationPath = path.join(targetDirectory, entry);
+    const sourceName = isBundledTemplate ? entry.bundledSource ?? entry.source : entry.source;
+    const sourcePath = path.join(sourceDirectory, sourceName);
+    const destinationPath = path.join(targetDirectory, entry.destination);
     await ensureDirectory(path.dirname(destinationPath));
     if (overwrite && (await exists(destinationPath))) {
       await rm(destinationPath, { recursive: true, force: true });

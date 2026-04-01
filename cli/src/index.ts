@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { runBuildCommand } from "./commands/build.js";
 import { runDoctorCommand } from "./commands/doctor.js";
 import { runInitCommand } from "./commands/init.js";
 
-const CLI_VERSION = "0.1.0";
+const CLI_VERSION = readCliVersion();
 
 async function main(): Promise<void> {
   ensureSupportedNodeVersion();
@@ -114,6 +115,12 @@ async function main(): Promise<void> {
     default:
       throw new Error(`Unknown command: ${command}`);
   }
+}
+
+function readCliVersion(): string {
+  const rawPackageJson = readFileSync(new URL("../package.json", import.meta.url), "utf8");
+  const parsed = JSON.parse(rawPackageJson) as { version?: string };
+  return parsed.version ?? "0.0.0";
 }
 
 function ensureSupportedNodeVersion(): void {

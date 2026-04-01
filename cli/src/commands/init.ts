@@ -140,6 +140,7 @@ export async function runInitCommand(
       options.projectName,
       appName,
     );
+    const usingBundledTemplate = options.templateRepo === undefined;
     const templateRepo = options.templateRepo ?? DEFAULT_TEMPLATE_REPOSITORY_URL;
     const templateRef = options.templateRef ?? DEFAULT_TEMPLATE_REF;
 
@@ -147,13 +148,13 @@ export async function runInitCommand(
 
     await runStep(
       feedback,
-      "Cloning and copying Android template...",
+      "Preparing Android shell project...",
       () =>
         copyTemplateProject(targetDirectory, overwrite, {
           repositoryUrl: templateRepo,
           ref: templateRef,
         }),
-      "Prepared Android template.",
+      "Prepared Android shell project.",
     );
 
     const signing = await ensureInitSigning(
@@ -174,7 +175,7 @@ export async function runInitCommand(
       packageName: packageNameSuggestion.packageName,
       webUrl,
       source: {
-        templateRepo,
+        templateRepo: usingBundledTemplate ? "bundled" : templateRepo,
         templateRef,
         webManifest: webManifestSeed?.source,
         bubblewrapManifest: bubblewrapSeed?.source,
@@ -195,11 +196,13 @@ export async function runInitCommand(
     console.log(`Generated project at ${targetDirectory}`);
     console.log(`Application ID: ${applicationId}`);
     console.log(`Web URL: ${webUrl}`);
-    console.log(`Template source: ${templateRepo}#${templateRef}`);
-    // TODO: switch this back to the installed `mwa-webshell build ...` command
-    // once the CLI is published as a real npm package.
+    console.log(
+      usingBundledTemplate
+        ? "Template source: bundled"
+        : `Template source: ${templateRepo}#${templateRef}`,
+    );
     console.log("Next steps:");
-    console.log(`  For now: pnpm cli -- build ${quoteShellValue(targetDirectory)}`);
+    console.log(`  mwa-webshell build ${quoteShellValue(targetDirectory)}`);
   } finally {
     prompter.close();
   }

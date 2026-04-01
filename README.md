@@ -1,109 +1,58 @@
 # Solana Mobile Web Shell
 
-Android WebView shell for Solana dApps with working Mobile Wallet Adapter (MWA) flow.
-
-## Current Focus
-
-- Android WebView template: complete baseline
-- CLI: working Node 24 + TypeScript tool under `cli/`
-- Edge-case investigations (service workers, notifications, advanced browser parity): deferred
+Solana Mobile Web Shell is a Command Line Interface (CLI) that helps developers generate an Android app project that wraps an existing web app or website inside an Android WebView.
 
 ## Why
 
-Upcoming Android browser Local Network Access permission behavior can break MWA flows for PWAs and custom-tab approaches.
+Browsers are rolling out Local Network Access restrictions that can break Mobile Wallet Adapter flows on Android web, especially flows that rely on local network or loopback communication for wallet association.
 
-This Android WebView shell is the immediate path to preserve wallet connect/sign functionality.
+Android web apps and native app wrappers that use Custom Chrome Tabs, including Bubblewrap-style APKs, can be affected by this change.
 
-## Android Template Requirements (V1)
+Solana Mobile Web Shell exists to work around those browser-side restrictions by moving the app into an Android WebView shell while preserving Mobile Wallet Adapter functionality.
 
-1. Host a web app at a configurable URL.
-2. Support in-app navigation (back handling, normal WebView scroll/gesture behavior, pull-to-refresh).
-3. Inject `Solana Mobile Web Shell` marker into the WebView user agent.
-4. Catch and handle MWA intents (`solana-wallet://...`) and support connect/sign.
-5. Open external browser for out-of-scope links (outside configured host).
+References:
+- https://developer.chrome.com/blog/local-network-access
+- https://github.com/WICG/local-network-access
 
-## Implemented Template Capabilities
+## What It Does
 
-- WebView wrapper with configurable URL entrypoint.
-- MWA intent interception and wallet-app handoff.
-- Synthetic blur dispatch to unblock MWA detection in WebView.
-- Stable JS runtime during wallet handoff (WebView JS not paused).
-- Browser-like viewport behavior fixes + guarded runtime fallback for `vh/dvh`.
-- External link routing for non-scoped hosts.
-- Pull-to-refresh reload for in-app pages.
+- generates an Android project for wrapping an existing web app, website, or PWA
+- keeps in-scope navigation inside the app and opens out-of-scope links in the system browser
+- intercepts `solana-wallet://` and related wallet handoff flows natively
+- supports app name, application ID, icons, splash branding, signing metadata, and Android version configuration
+- accepts both standard web `manifest.json` files and Bubblewrap-style `twa-manifest.json` files
 
-## Template Configuration
-
-Update these values when creating a new app from this template:
-
-1. `gradle.properties`
-   - `WEB_SHELL_URL`: default site loaded by WebView.
-   - `WEB_SHELL_APPLICATION_ID`: APK package id for install/release.
-2. `app/src/main/res/values/strings.xml`
-   - `app_name`: launcher app name.
-3. Kotlin package/namespace (optional for V1, required for a full custom package)
-   - Current neutral template package: `com.solanamobile.webshell`
-   - See release checklist for full rename steps.
-
-## Build and Run
+## Install
 
 ```bash
-./gradlew installDebug
-adb shell am start -n com.solanamobile.webshell/.MainActivity
+npm install -g @solanamobile/webshell-cli
 ```
 
-## V1 Acceptance Snapshot
+## Quick Start
 
-- Template validated against current test set:
-  - `https://trepa.app/`
-  - `https://app.drift.trade/`
-  - `https://www.jito.network/staking/`
-  - `https://jup.ag/`
-  - `https://www.cfl.fun/`
-- Current status:
-  - Page loading works across the 5-site matrix.
-  - Privy connect flow works.
-  - MWA connect/sign flows work.
+```bash
+mwa-webshell init ./my-app --manifest https://example.com/manifest.json
+mwa-webshell build ./my-app
+mwa-webshell doctor ./my-app --fix
+```
 
-## CLI
+For CLI usage details, see [cli/README.md](/Users/thefunnyintrovert/MwaWebShell/cli/README.md).
 
-The repository includes a Node 24 + TypeScript CLI under `cli/`.
+## Temporary MWA Compatibility Note
 
-Current commands:
+This CLI does not install or update the JavaScript Mobile Wallet Adapter packages used by the web app loaded inside the shell.
 
-- `init`: clones the template repository, copies the Android template into a target directory, rewrites app name, application ID, Kotlin package / namespace, URL, icons, and splash branding
-- `build`: runs Android toolchain checks, installs missing dependencies when needed, and builds the generated Android project
-- `doctor`: checks Android/JDK toolchain state and can install missing dependencies
+For Web Shell support, teams should use a Web Shell-capable Solana Mobile MWA canary or a later compatible release. The current minimum known-good baseline for this repo is:
 
-Supported manifest/config input:
+- https://www.npmjs.com/package/@solana-mobile/wallet-adapter-mobile/v/0.0.0-canary-20260331201049
 
-- standard web `manifest.json`
-- Bubblewrap-style `twa-manifest.json`
+Older releases may ignore Web Shell or MWS behavior in WebView. Replace this note once the same support is available in a stable upstream release.
 
-The CLI reuses compatible metadata fields, but it does **not** generate a TWA project. It always generates this WebView-based Android shell.
-
-Typical local usage during development:
+## Development
 
 ```bash
 cd cli
-pnpm install
-pnpm cli -- init ./my-app --manifest https://example.com/manifest.json
-pnpm cli -- build ./my-app
-pnpm cli -- doctor ./my-app --fix
+npm install
+npm run build
+npm test
 ```
-
-## Deliverables Status
-
-- [x] Boilerplate Android WebView wrapper project with required features.
-- [x] CLI tool (`init`, `build`, `doctor`, dependency setup)
-
-## Deferred to V2
-
-- Service worker behavior deep-dive and compatibility layer strategy.
-- Web Notifications bridging strategy.
-- Extended edge-case matrix and hardening.
-
-## References
-
-- [Bubblewrap CLI / PWA publishing](https://docs.solanamobile.com/dapp-publishing/publishing-a-pwa#4-publish-digital-asset-links)
-- [Solana Mobile docs: PWAs](https://docs.solanamobile.com/dapp-publishing/publishing-a-pwa#pwas-on-the-dapp-store)

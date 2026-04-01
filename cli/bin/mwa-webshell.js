@@ -8,20 +8,20 @@ import { fileURLToPath } from "node:url";
 
 const cliDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distEntry = path.join(cliDirectory, "dist", "index.js");
-const sourceEntry = path.join(cliDirectory, "src", "index.ts");
-const tsxEntry = path.join(cliDirectory, "node_modules", "tsx");
 const forwardedArgs = process.argv[2] === "--"
   ? process.argv.slice(3)
   : process.argv.slice(2);
-const useSourceEntry =
-  (await hasEntry(sourceEntry)) &&
-  (await hasEntry(tsxEntry));
+
+if (!(await hasEntry(distEntry))) {
+  console.error(
+    "The CLI build output is missing. Run `npm run build` before invoking the local bin.",
+  );
+  process.exit(1);
+}
 
 const child = spawn(
   process.execPath,
-  useSourceEntry
-    ? ["--import", "tsx", sourceEntry, ...forwardedArgs]
-    : [distEntry, ...forwardedArgs],
+  [distEntry, ...forwardedArgs],
   {
     stdio: "inherit",
     env: process.env,
